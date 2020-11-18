@@ -89,7 +89,7 @@ func statement(playsJSON, invoiceJSON string) string {
 	var (
 		totalAmount   int
 		volumeCredits float64
-		result        = `Statement for ${invoice.customer}\n`
+		result        string
 	)
 
 	// unmarshal playsJSON, invoiceJSON
@@ -106,15 +106,19 @@ func statement(playsJSON, invoiceJSON string) string {
 	fmt.Printf("plays:\n%+v\n", plays)
 	fmt.Printf("invoice:\n%+v\n", invoices)
 
-	// const format = new Intl.NumberFormat(
-	// 	"enUS",
-	// 	{
-	// 		style: "currency",
-	// 		currency: "USD",
-	// 		minimumFractionDigits: 2
-	// 	}
-	// ).format
+	result = fmt.Sprintf("Statement for %s\n", invoices[0].Customer)
 
+	// not easy in Go
+	/*
+		const format = new Intl.NumberFormat(
+			"enUS",
+			{
+				style: "currency",
+				currency: "USD",
+				minimumFractionDigits: 2
+			}
+		).format
+	*/
 	// for each invoice performance
 	for _, perf := range invoices[0].Performances {
 
@@ -146,16 +150,25 @@ func statement(playsJSON, invoiceJSON string) string {
 			volumeCredits += math.Floor(float64(perf.Audience))
 		}
 		// print line for this order
-		result += ` ${play.name}: ${format(thisAmount/100)} (${perf.audience} seats)`
+		result += fmt.Sprintf("  %s: $%.2f (%d seats)\n", play.Name, float64(thisAmount/100), perf.Audience)
 		totalAmount += thisAmount
 	}
-	result += `Amount owed is ${format(totalAmount/100)}\n`
-	result += `You earned ${volumeCredits} credits\n`
+	result += fmt.Sprintf("Amount owed is $%.2f\n", float64(totalAmount/100))
+	result += fmt.Sprintf("You earned $%.2f credits\n", volumeCredits)
 	return result
 
 }
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println(statement(playsJSON, invoiceJSON))
+	fmt.Println(statement(playsJSON, invoiceJSON))
 }
+
+/*
+Statement for BigCo
+  Hamlet: $650.00 (55 seats)
+  As You Like It: $580.00 (35 seats)
+  Othello: $500.00 (40 seats)
+  Amount owed is $1,730.00
+You earned 47 credits
+*/
