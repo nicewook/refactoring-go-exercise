@@ -7,6 +7,8 @@ import (
 	"math"
 )
 
+// reference for code: https://feel5ny.github.io/2020/04/04/Refactoring_002/
+
 var (
 	playsJSON string = `{
 		"hamlet":  {"name": "Hamlet", "type": "tragedy"},
@@ -35,32 +37,22 @@ var (
 	]`
 )
 
+// Play is a struct with Name and Type of the play
 type Play struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
 }
 
-// Though it looks ugly, I follow the JSON format the book described
-type Plays struct {
-	Hamlet struct {
-		Name string `json:"name"`
-		Type string `json:"type"`
-	} `json:"hamlet"`
-	Aslike struct {
-		Name string `json:"name"`
-		Type string `json:"type"`
-	} `json:"aslike"`
-	Othello struct {
-		Name string `json:"name"`
-		Type string `json:"type"`
-	} `json:"othello"`
-}
+// Plays is a map of the play
+type Plays map[string]Play
 
+// Performance has PlayID and the amount of the Audience
 type Performance struct {
 	PlayID   string `json:"playID"`
 	Audience int    `json:"audience"`
 }
 
+// Invoice shows the customer name and performances info
 type Invoice struct {
 	Customer     string `json:"customer"`
 	Performances []struct {
@@ -69,26 +61,17 @@ type Invoice struct {
 	} `json:"performances"`
 }
 
-func getPlayStruct(plays Plays, perf Performance) Play {
-	switch perf.PlayID {
-	case "hamlet":
-		return plays.Hamlet
-
-	case "aslike":
-		return plays.Aslike
-
-	case "othello":
-		return plays.Othello
-
-	default:
-		return Play{}
+func maxInt(x, y int) int {
+	if x > y {
+		return x
 	}
+	return y
 }
 
 func statement(playsJSON, invoiceJSON string) string {
 	var (
 		totalAmount   int
-		volumeCredits float64
+		volumeCredits int
 		result        string
 	)
 
@@ -103,8 +86,8 @@ func statement(playsJSON, invoiceJSON string) string {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("plays:\n%+v\n", plays)
-	fmt.Printf("invoice:\n%+v\n", invoices)
+	// fmt.Printf("plays:\n%+v\n", plays)
+	// fmt.Printf("invoice:\n%+v\n", invoices)
 
 	result = fmt.Sprintf("Statement for %s\n", invoices[0].Customer)
 
@@ -122,7 +105,12 @@ func statement(playsJSON, invoiceJSON string) string {
 	// for each invoice performance
 	for _, perf := range invoices[0].Performances {
 
-		play := getPlayStruct(plays, perf) // return Play struct
+		// play := getPlayStruct(plays, perf) // return Play struct
+		play, found := plays[perf.PlayID] // return Play struct
+		if !found {
+			log.Printf("not found the information of the %s", perf.PlayID)
+			continue
+		}
 
 		var thisAmount int
 		switch play.Type {
@@ -144,19 +132,20 @@ func statement(playsJSON, invoiceJSON string) string {
 		}
 
 		// add volume credits
-		volumeCredits += math.Max(float64(perf.Audience-30), 0)
+		volumeCredits += maxInt((perf.Audience - 30), 0)
+
 		// add extra credit for every ten comedy attendees
 		if "comedy" == play.Type {
-			volumeCredits += math.Floor(float64(perf.Audience))
+			volumeCredits += int(math.Floor(float64(perf.Audience) / 5))
 		}
+
 		// print line for this order
 		result += fmt.Sprintf("  %s: $%.2f (%d seats)\n", play.Name, float64(thisAmount/100), perf.Audience)
 		totalAmount += thisAmount
 	}
 	result += fmt.Sprintf("Amount owed is $%.2f\n", float64(totalAmount/100))
-	result += fmt.Sprintf("You earned $%.2f credits\n", volumeCredits)
+	result += fmt.Sprintf("You earned %d credits\n", volumeCredits)
 	return result
-
 }
 
 func main() {
@@ -169,6 +158,13 @@ Statement for BigCo
   Hamlet: $650.00 (55 seats)
   As You Like It: $580.00 (35 seats)
   Othello: $500.00 (40 seats)
-  Amount owed is $1,730.00
+Amount owed is $1730.00
+You earned 47 credits
+
+Statement for BigCo
+	Hamlet: $650.00 (55 seats)
+	As You Like It: $580.00 (35 seats)
+	Othello: $500.00 (40 seats)
+Amount owed is $1,730.00
 You earned 47 credits
 */
